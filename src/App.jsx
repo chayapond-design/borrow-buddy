@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { loadData, saveData, createId, todayISO } from "./storage.js";
 import ActiveLoansTab from "./components/ActiveLoansTab.jsx";
 import HistoryTab from "./components/HistoryTab.jsx";
+import ManageTab from "./components/ManageTab.jsx";
 
 const TABS = [
   { id: "active", label: "ยืมอยู่" },
@@ -115,9 +116,15 @@ function App() {
           />
         )}
         {tab === "manage" && (
-          <p>
-            ของ: {data.items.length} รายการ / ผู้ยืม: {data.borrowers.length} คน
-          </p>
+          <ManageTab
+            items={data.items}
+            borrowers={data.borrowers}
+            loans={data.loans}
+            onAddItem={addItem}
+            onAddBorrower={addBorrower}
+            onDeleteItem={deleteItem}
+            onDeleteBorrower={deleteBorrower}
+          />
         )}
       </main>
     </div>
