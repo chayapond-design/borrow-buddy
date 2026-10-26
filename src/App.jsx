@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { loadData, saveData, createId, todayISO } from "./storage.js";
+import ActiveLoansTab from "./components/ActiveLoansTab.jsx";
 
 const TABS = [
   { id: "active", label: "ยืมอยู่" },
@@ -83,7 +84,19 @@ function App() {
         </nav>
       </header>
       <main>
-        {tab === "active" && <p>ยืมอยู่: {data.loans.filter((l) => !l.returnedAt).length} รายการ</p>}
+        {tab === "active" && (
+          <ActiveLoansTab
+            items={data.items}
+            borrowers={data.borrowers}
+            loans={data.loans}
+            onAddItem={addItem}
+            onAddBorrower={addBorrower}
+            onAddLoan={addLoan}
+            onUpdateLoan={updateLoan}
+            onDeleteLoan={deleteLoan}
+            onReturnLoan={returnLoan}
+          />
+        )}
         {tab === "history" && <p>ประวัติ: {data.loans.filter((l) => l.returnedAt).length} รายการ</p>}
         {tab === "manage" && (
           <p>
