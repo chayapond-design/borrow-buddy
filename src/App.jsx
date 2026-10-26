@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadData, saveData, createId, todayISO } from "./storage.js";
 import ActiveLoansTab from "./components/ActiveLoansTab.jsx";
+import HistoryTab from "./components/HistoryTab.jsx";
 
 const TABS = [
   { id: "active", label: "ยืมอยู่" },
@@ -67,6 +68,10 @@ function App() {
     updateLoan(id, { returnedAt: todayISO() });
   }
 
+  function reopenLoan(id) {
+    updateLoan(id, { returnedAt: null });
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -97,7 +102,18 @@ function App() {
             onReturnLoan={returnLoan}
           />
         )}
-        {tab === "history" && <p>ประวัติ: {data.loans.filter((l) => l.returnedAt).length} รายการ</p>}
+        {tab === "history" && (
+          <HistoryTab
+            items={data.items}
+            borrowers={data.borrowers}
+            loans={data.loans}
+            onAddItem={addItem}
+            onAddBorrower={addBorrower}
+            onUpdateLoan={updateLoan}
+            onDeleteLoan={deleteLoan}
+            onReopenLoan={reopenLoan}
+          />
+        )}
         {tab === "manage" && (
           <p>
             ของ: {data.items.length} รายการ / ผู้ยืม: {data.borrowers.length} คน
