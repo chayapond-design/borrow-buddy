@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
-import { loadData, saveData, createId, todayISO } from "./storage.js";
+import { supabase } from "./supabaseClient.js";
+import {
+  fetchAllData,
+  addItem as dbAddItem,
+  deleteItem as dbDeleteItem,
+  addBorrower as dbAddBorrower,
+  deleteBorrower as dbDeleteBorrower,
+  addLoan as dbAddLoan,
+  updateLoan as dbUpdateLoan,
+  deleteLoan as dbDeleteLoan,
+  todayISO,
+} from "./storage.js";
+import LoginForm from "./components/LoginForm.jsx";
 import ActiveLoansTab from "./components/ActiveLoansTab.jsx";
 import HistoryTab from "./components/HistoryTab.jsx";
 import ManageTab from "./components/ManageTab.jsx";
@@ -10,73 +22,135 @@ const TABS = [
   { id: "manage", label: "จัดการของ/ผู้ยืม" },
 ];
 
+function reportError(err) {
+  alert(err.message ?? String(err));
+}
+
 function App() {
-  const [data, setData] = useState(() => loadData());
+  const [session, setSession] = useState(undefined);
+  const [data, setData] = useState({ items: [], borrowers: [], loans: [] });
   const [tab, setTab] = useState("active");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    saveData(data);
-  }, [data]);
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.subscription.unsubscribe();
+  }, []);
 
-  function addItem(name) {
-    const item = { id: createId(), name };
-    setData((d) => ({ ...d, items: [...d.items, item] }));
-    return item;
+  useEffect(() => {
+    if (!session) {
+      setData({ items: [], borrowers: [], loans: [] });
+      return;
+    }
+    setLoading(true);
+    fetchAllData()
+      .then(setData)
+      .catch(reportError)
+      .finally(() => setLoading(false));
+  }, [session]);
+
+  async function addItem(name) {
+    try {
+      const item = await dbAddItem(name);
+      setData((d) => ({ ...d, items: [...d.items, item] }));
+      return item;
+    } catch (err) {
+      reportError(err);
+      throw err;
+    }
   }
 
-  function deleteItem(id) {
-    setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) }));
+  async function deleteItem(id) {
+    try {
+      await dbDeleteItem(id);
+      setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) }));
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function addBorrower(name) {
-    const borrower = { id: createId(), name };
-    setData((d) => ({ ...d, borrowers: [...d.borrowers, borrower] }));
-    return borrower;
+  async function addBorrower(name) {
+    try {
+      const borrower = await dbAddBorrower(name);
+      setData((d) => ({ ...d, borrowers: [...d.borrowers, borrower] }));
+      return borrower;
+    } catch (err) {
+      reportError(err);
+      throw err;
+    }
   }
 
-  function deleteBorrower(id) {
-    setData((d) => ({
-      ...d,
-      borrowers: d.borrowers.filter((b) => b.id !== id),
-    }));
+  async function deleteBorrower(id) {
+    try {
+      await dbDeleteBorrower(id);
+      setData((d) => ({ ...d, borrowers: d.borrowers.filter((b) => b.id !== id) }));
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function addLoan({ itemId, borrowerId, borrowDate, dueDate }) {
-    const loan = {
-      id: createId(),
-      itemId,
-      borrowerId,
-      borrowDate: borrowDate || todayISO(),
-      dueDate: dueDate || null,
-      returnedAt: null,
-    };
-    setData((d) => ({ ...d, loans: [...d.loans, loan] }));
-    return loan;
+  async function addLoan(loan) {
+    try {
+      const created = await dbAddLoan(loan);
+      setData((d) => ({ ...d, loans: [...d.loans, created] }));
+      return created;
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function updateLoan(id, patch) {
-    setData((d) => ({
-      ...d,
-      loans: d.loans.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-    }));
+  async function updateLoan(id, patch) {
+    try {
+      const updated = await dbUpdateLoan(id, patch);
+      setData((d) => ({
+        ...d,
+        loans: d.loans.map((l) => (l.id === id ? updated : l)),
+      }));
+      return updated;
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function deleteLoan(id) {
-    setData((d) => ({ ...d, loans: d.loans.filter((l) => l.id !== id) }));
+  async function deleteLoan(id) {
+    try {
+      await dbDeleteLoan(id);
+      setData((d) => ({ ...d, loans: d.loans.filter((l) => l.id !== id) }));
+    } catch (err) {
+      reportError(err);
+    }
   }
 
   function returnLoan(id) {
-    updateLoan(id, { returnedAt: todayISO() });
+    return updateLoan(id, { returnedAt: todayISO() });
   }
 
   function reopenLoan(id) {
-    updateLoan(id, { returnedAt: null });
+    return updateLoan(id, { returnedAt: null });
+  }
+
+  function logout() {
+    supabase.auth.signOut();
+  }
+
+  if (session === undefined) {
+    return <div className="app">กำลังโหลด...</div>;
+  }
+
+  if (!session) {
+    return <LoginForm />;
   }
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Borrow Buddy</h1>
+        <div className="app-header-top">
+          <h1>Borrow Buddy</h1>
+          <button onClick={logout}>ออกจากระบบ</button>
+        </div>
         <nav className="tabs">
           {TABS.map((t) => (
             <button
@@ -90,41 +164,47 @@ function App() {
         </nav>
       </header>
       <main>
-        {tab === "active" && (
-          <ActiveLoansTab
-            items={data.items}
-            borrowers={data.borrowers}
-            loans={data.loans}
-            onAddItem={addItem}
-            onAddBorrower={addBorrower}
-            onAddLoan={addLoan}
-            onUpdateLoan={updateLoan}
-            onDeleteLoan={deleteLoan}
-            onReturnLoan={returnLoan}
-          />
-        )}
-        {tab === "history" && (
-          <HistoryTab
-            items={data.items}
-            borrowers={data.borrowers}
-            loans={data.loans}
-            onAddItem={addItem}
-            onAddBorrower={addBorrower}
-            onUpdateLoan={updateLoan}
-            onDeleteLoan={deleteLoan}
-            onReopenLoan={reopenLoan}
-          />
-        )}
-        {tab === "manage" && (
-          <ManageTab
-            items={data.items}
-            borrowers={data.borrowers}
-            loans={data.loans}
-            onAddItem={addItem}
-            onAddBorrower={addBorrower}
-            onDeleteItem={deleteItem}
-            onDeleteBorrower={deleteBorrower}
-          />
+        {loading ? (
+          <p>กำลังโหลดข้อมูล...</p>
+        ) : (
+          <>
+            {tab === "active" && (
+              <ActiveLoansTab
+                items={data.items}
+                borrowers={data.borrowers}
+                loans={data.loans}
+                onAddItem={addItem}
+                onAddBorrower={addBorrower}
+                onAddLoan={addLoan}
+                onUpdateLoan={updateLoan}
+                onDeleteLoan={deleteLoan}
+                onReturnLoan={returnLoan}
+              />
+            )}
+            {tab === "history" && (
+              <HistoryTab
+                items={data.items}
+                borrowers={data.borrowers}
+                loans={data.loans}
+                onAddItem={addItem}
+                onAddBorrower={addBorrower}
+                onUpdateLoan={updateLoan}
+                onDeleteLoan={deleteLoan}
+                onReopenLoan={reopenLoan}
+              />
+            )}
+            {tab === "manage" && (
+              <ManageTab
+                items={data.items}
+                borrowers={data.borrowers}
+                loans={data.loans}
+                onAddItem={addItem}
+                onAddBorrower={addBorrower}
+                onDeleteItem={deleteItem}
+                onDeleteBorrower={deleteBorrower}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

@@ -25,18 +25,18 @@ export default function LoanForm({
   const [newItemName, setNewItemName] = useState("");
   const [newBorrowerName, setNewBorrowerName] = useState("");
 
-  function handleAddItem() {
+  async function handleAddItem() {
     const name = newItemName.trim();
     if (!name) return;
-    const item = onAddItem(name);
+    const item = await onAddItem(name);
     setItemId(item.id);
     setNewItemName("");
   }
 
-  function handleAddBorrower() {
+  async function handleAddBorrower() {
     const name = newBorrowerName.trim();
     if (!name) return;
-    const borrower = onAddBorrower(name);
+    const borrower = await onAddBorrower(name);
     setBorrowerId(borrower.id);
     setNewBorrowerName("");
   }

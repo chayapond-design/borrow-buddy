@@ -60,3 +60,37 @@
 - [x] รีเฟรชหน้าเว็บ ตรวจว่าข้อมูลยังอยู่ (localStorage persist ถูกต้อง)
 
 ทดสอบด้วย headless Chromium (Playwright) ผ่าน dev server จริง ไม่พบ console error, ทุกเงื่อนไขผ่านตามที่คาด
+
+# V2: Supabase + Auth
+
+## 10. Setup Supabase project
+
+- [x] สร้าง/เตรียม Supabase project เก็บ URL + anon key ไว้ใช้ฝั่ง client (เช่น `.env`)
+- [x] สร้างตาราง `items`, `borrowers`, `loans` ตาม Data model ใน design.md (ทุกตารางมีคอลัมน์ `owner_id uuid references auth.users`)
+- [x] เปิด RLS ทุกตาราง + เขียน policy select/insert/update/delete ด้วยเงื่อนไข `owner_id = auth.uid()`
+- [ ] ปิดการสมัครสมาชิกเอง (self sign-up) ใน Supabase Auth settings — **ต้องทำเองในหน้า Dashboard** (ไม่มี MCP tool ให้ตั้งค่านี้)
+- [ ] สร้างบัญชีเจ้าของ (email + password) ผ่าน Supabase dashboard — **ต้องทำเองในหน้า Dashboard**
+
+## 11. ย้าย data layer ไปใช้ Supabase (`src/supabaseClient.js`, `src/storage.js`)
+
+- [x] ติดตั้ง `@supabase/supabase-js`
+- [x] สร้าง `src/supabaseClient.js` อ่าน URL + anon key จาก env var
+- [x] แก้ `storage.js` จาก localStorage เป็นฟังก์ชันเรียก Supabase (โหลด/เพิ่ม/แก้/ลบ item, borrower, loan) ฟังก์ชันคำนวณสถานะ (isActive/isReturned/isOverdue) คงเดิม
+- [x] ลบโค้ด localStorage (`loadData`/`saveData`/`useEffect` เขียนทับทั้งก้อน) ที่ไม่ใช้แล้ว
+
+## 12. Auth (`LoginForm.jsx`, `App.jsx`)
+
+- [x] สร้าง `components/LoginForm.jsx` ฟอร์ม email + password เรียก `supabase.auth.signInWithPassword`
+- [x] `App.jsx` เช็ค session ตอน mount + subscribe `onAuthStateChange`
+- [x] ไม่มี session → แสดงแค่ `LoginForm`, มี session → โหลดข้อมูลแล้วแสดง 3 แท็บตามปกติ
+- [x] ปุ่ม logout เรียก `supabase.auth.signOut()`
+
+## 13. ทดสอบ end-to-end ด้วยมือ (V2)
+
+- [ ] ล็อกอินด้วยบัญชีเจ้าของที่สร้างไว้ ตรวจว่าเข้าแท็บต่างๆได้
+- [ ] ลองล็อกอินด้วย email/password ผิด ตรวจว่า error แสดงถูกต้อง
+- [ ] ตรวจว่าไม่มีหน้า/ปุ่มสมัครสมาชิกเองในระบบ
+- [ ] สร้าง Item/Borrower/Loan แล้วตรวจใน Supabase ว่า `owner_id` ตรงกับเจ้าของที่ล็อกอิน
+- [ ] (ถ้ามี 2 บัญชี) ตรวจว่าเจ้าของ A มองไม่เห็น Loan ของเจ้าของ B (RLS ทำงานถูก)
+- [ ] รีเฟรช/เปิดเบราว์เซอร์ใหม่ ตรวจพฤติกรรม session ตามที่ตั้งใจ
+- [ ] logout แล้วตรวจว่ากลับไปหน้า login และเข้าถึงข้อมูลไม่ได้ก่อนล็อกอิน

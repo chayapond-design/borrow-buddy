@@ -176,3 +176,54 @@ button:disabled {
   font-size: 1.1rem;
   margin-bottom: 8px;
 }
+
+.app-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-screen {
+  display: flex;
+  justify-content: center;
+  padding-top: 60px;
+}
+
+.login-form {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.login-form h1 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.login-form input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.login-error {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin: 0;
+}
